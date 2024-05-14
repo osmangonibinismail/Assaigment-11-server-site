@@ -1,15 +1,47 @@
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors());
+app.use(cors({
+    origin: [
+        'http://localhost:5173','http://localhost:5174','https://oai-food-corner.web.app','https://oai-food-corner.firebaseapp.com',
+    ],
+    credentials: true,
+    optionsSuccessStatus: 200.
+}));
 app.use(express.json());
+app.use(cookieParser())
 
 console.log(process.env.DB_PASS)
+
+// verify jwt middleware
+const verifyToken = (req, res, next) => {
+    const token = req.cookies?.token
+    if (!token) return res.status(401).send({ message: 'unauthorized access'})
+            if (token) {
+                jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                    if (err) {
+                        console.log(err)
+                        return res.status(401).send({message: 'unauthorized access'})
+                    }
+                    console.log(decoded)
+                    req.user = decoded
+                    next()
+                })
+            }
+};
+const cookieOption ={
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production'? true : false,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+}
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.cgjyhyw.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -27,8 +59,42 @@ async function run() {
         // collection set up
         const addFoodCollection = client.db('oaiFoodCorner').collection('food')
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
-
+        // await client.connect();
+        // jwt generate
+        app.post('/jwt', async (req, res) => {
+            const email = req.body
+            const token = jwt.sign(email, process.env.ACCESS_TOKEN_SECRET, {
+                expiresIn: '365d'
+            })
+            res.cookie('token', token, cookieOption)
+                .send({ success: true })
+        })
+        // clear token log out
+        app.get('/logout', (req, res) => {
+            res
+                .clearCookie('token',{ ...cookieOption,maxAge: 0} )
+                .send({ success: true })
+        })
+        // app.post('/logout', async (req, res) => {
+        //     const user = req.body;
+        //     console.log('logging out', user);
+        //     res
+        //         .clearCookie('token', { maxAge: 0, sameSite: 'none', secure: true })
+        //         .send({ success: true })
+        //  })
+        // feature food
+        app.get('/allAvailableFood', async(req, res) => {
+            const cursor = addFoodCollection.find();
+            const crafts = await cursor.toArray();
+            res.send(crafts);
+        })
+    
+        app.post('/featuredFood', async(req, res) => {
+            const craftItem = req.body;
+            console.log(craftItem);
+            const result = await addFoodCollection.insertOne(craftItem);
+            res.send(result);
+        });
         // add food post
         app.post("/addFood", async (req, res) => {
             console.log(req.body);
@@ -36,14 +102,62 @@ async function run() {
             console.log(result);
             res.send(result)
         })
+        // request food
+        app.post('/requested', async (req, res) => {
+            const requestDoc = req.body;
+            console.log(requestDoc)
+            const result = await addFoodCollection.insertOne(requestDoc);
+            res.send(result)
+
+        })
+        app.get('/requested/:email', verifyToken, async (req, res) => {
+            const tokenEmail = req.user.email
+            const email = req.params.email;
+            if (tokenEmail !== email) {
+                return res.status(403).send({message: 'forbidden access'})
+            }
+            const query = { email: email }
+            const result = await addFoodCollection.find(query).toArray();
+            res.send(result)
+        })
+        // update available button
+        app.patch('requested/:id',  async (req, res) => {
+            const id = req.params.id
+            const foodStatus = req.body
+            const query = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: foodStatus,
+            }
+            const result = await addFoodCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
         // manage my food page
-        app.get("/myFood/:email", async (req, res) => {
+        app.get("/myFood/:email",  async (req, res) => {
             console.log(req.params.email);
             const result = await addFoodCollection.find({ email: req.params.email }).toArray();
             res.send(result);
         })
         // All available food 
-        app.get('/allAvailableFood', async (req, res) =>{
+        app.get('/allAvailableFood', async (req, res) => {
+            const cursor = addFoodCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+        // changeLayout
+        app.get('/allAvailableFood', async (req, res) => {
+            const filter = req.query.filter
+            const sort = req.query.sort
+
+            let query = {}
+            if (filter ) query = {category: filter}
+            let options = {}
+            if (sort) options = { sort: {expiredDate: sort === 'asc' ? 1 : -1}}
+            const cursor = addFoodCollection.find(options);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+        // all available page date shorting
+        app.get('/changeLayout', async (req, res) => {
             const cursor = addFoodCollection.find();
             const result = await cursor.toArray();
             res.send(result);
@@ -66,7 +180,7 @@ async function run() {
             console.log(result);
             res.send(result);
         })
-        app.put("/updateFood/:id", async (req, res) => {
+        app.put("/updateFood/:id",  async (req, res) => {
             console.log(req.params.id)
             const query = { _id: new ObjectId(req.params.id) };
             const data = {
@@ -86,7 +200,7 @@ async function run() {
         })
 
         // delete
-        app.delete("/delete/:id", async(req, res) => {
+        app.delete("/delete/:id", async (req, res) => {
             const result = await addFoodCollection.deleteOne({
                 _id: new ObjectId(req.params.id)
             })
@@ -96,7 +210,7 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
+        // await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
