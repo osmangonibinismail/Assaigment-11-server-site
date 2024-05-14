@@ -84,7 +84,17 @@ async function run() {
         //  })
         // feature food
         app.get('/allAvailableFood', async(req, res) => {
-            const cursor = addFoodCollection.find();
+            const filter = req.query;
+            console.log(filter)
+            const query = {
+                title: {$regex: filter.search, $options: 'i'}
+            };
+            const options = {
+                sort: {
+                    expiredDate: filter.sort === 'asc' ? 1: -1
+                }
+            }
+            const cursor = addFoodCollection.find(query, options);
             const crafts = await cursor.toArray();
             res.send(crafts);
         })
@@ -138,25 +148,28 @@ async function run() {
             res.send(result);
         })
         // All available food 
-        app.get('/allAvailableFood', async (req, res) => {
-            const cursor = addFoodCollection.find();
-            const result = await cursor.toArray();
-            res.send(result);
-        })
+        // app.get('/allAvailableFood', async (req, res) => {
+        //     const cursor = addFoodCollection.find();
+        //     const result = await cursor.toArray();
+        //     res.send(result);
+        // })
         // changeLayout
-        app.get('/allAvailableFood', async (req, res) => {
-            const filter = req.query.filter
-            const sort = req.query.sort
+        // app.get('/allAvailableFood', async (req, res) => {
+        //     const filter = req.query.filter
+        //     const sort = req.query.sort
+        //     const search = req.query.search
 
-            let query = {}
-            if (filter ) query = {category: filter}
-            let options = {}
-            if (sort) options = { sort: {expiredDate: sort === 'asc' ? 1 : -1}}
-            const cursor = addFoodCollection.find(options);
-            const result = await cursor.toArray();
-            res.send(result);
-        })
-        // all available page date shorting
+        //     let query = {
+        //         foodName: {$regex: search, $options: 'i'},
+        //     }
+        //     if (filter ) query = {...query, category: filter}
+        //     let options = {}
+        //     if (sort) options = { sort: {expiredDate: sort === 'asc' ? 1 : -1}}
+        //     const cursor = addFoodCollection.find(options);
+        //     const result = await cursor.toArray();
+        //     res.send(result);
+        // })
+        // change layout
         app.get('/changeLayout', async (req, res) => {
             const cursor = addFoodCollection.find();
             const result = await cursor.toArray();
