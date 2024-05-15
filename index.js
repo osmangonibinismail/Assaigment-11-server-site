@@ -58,6 +58,7 @@ async function run() {
     try {
         // collection set up
         const addFoodCollection = client.db('oaiFoodCorner').collection('food')
+        const reqestCollection = client.db('oaiFoodCorner').collection('request')
         // Connect the client to the server	(optional starting in v4.7)
         // await client.connect();
         // jwt generate
@@ -82,27 +83,33 @@ async function run() {
         //         .clearCookie('token', { maxAge: 0, sameSite: 'none', secure: true })
         //         .send({ success: true })
         //  })
-        // feature food
-        app.get('/allAvailableFood', async(req, res) => {
-            const filter = req.query;
-            console.log(filter)
-            const query = {
-                title: {$regex: filter.search, $options: 'i'}
-            };
-            const options = {
-                sort: {
-                    expiredDate: filter.sort === 'asc' ? 1: -1
-                }
-            }
-            const cursor = addFoodCollection.find(query, options);
-            const crafts = await cursor.toArray();
-            res.send(crafts);
+        // All available food 
+        app.get('/allAvailableFood', async (req, res) => {
+            const cursor = addFoodCollection.find();
+            const result = await cursor.toArray();
+            res.send(result);
         })
+        // available food
+        // app.get('/allAvailableFood', async(req, res) => {
+        //     const filter = req.query;
+        //     console.log(filter)
+        //     // const query = {
+        //     //     title: {$regex: filter.search, $options: 'i'}
+        //     // };
+        //     // const options = {
+        //     //     sort: {
+        //     //         expiredDate: filter.sort === 'asc' ? 1: -1
+        //     //     }
+        //     // }
+        //     const cursor = addFoodCollection.find(query, options);
+        //     const result = await cursor.toArray();
+        //     res.send(result);
+        // })
     
         app.post('/featuredFood', async(req, res) => {
-            const craftItem = req.body;
-            console.log(craftItem);
-            const result = await addFoodCollection.insertOne(craftItem);
+            const featuredItem = req.body;
+            console.log(featuredItem);
+            const result = await addFoodCollection.insertOne(featuredItem);
             res.send(result);
         });
         // add food post
@@ -111,6 +118,12 @@ async function run() {
             const result = await addFoodCollection.insertOne(req.body);
             console.log(result);
             res.send(result)
+        })
+        // manage my food page
+        app.get("/myFood/:email",  async (req, res) => {
+            console.log(req.params.email);
+            const result = await addFoodCollection.find({ email: req.params.email }).toArray();
+            res.send(result);
         })
         // request food
         app.post('/requested', async (req, res) => {
@@ -141,18 +154,8 @@ async function run() {
             const result = await addFoodCollection.updateOne(query, updateDoc)
             res.send(result)
         })
-        // manage my food page
-        app.get("/myFood/:email",  async (req, res) => {
-            console.log(req.params.email);
-            const result = await addFoodCollection.find({ email: req.params.email }).toArray();
-            res.send(result);
-        })
-        // All available food 
-        // app.get('/allAvailableFood', async (req, res) => {
-        //     const cursor = addFoodCollection.find();
-        //     const result = await cursor.toArray();
-        //     res.send(result);
-        // })
+        
+        
         // changeLayout
         // app.get('/allAvailableFood', async (req, res) => {
         //     const filter = req.query.filter
