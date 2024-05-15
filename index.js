@@ -84,27 +84,27 @@ async function run() {
         //         .send({ success: true })
         //  })
         // All available food 
-        app.get('/allAvailableFood', async (req, res) => {
-            const cursor = addFoodCollection.find();
-            const result = await cursor.toArray();
-            res.send(result);
-        })
-        // available food
-        // app.get('/allAvailableFood', async(req, res) => {
-        //     const filter = req.query;
-        //     console.log(filter)
-        //     // const query = {
-        //     //     title: {$regex: filter.search, $options: 'i'}
-        //     // };
-        //     // const options = {
-        //     //     sort: {
-        //     //         expiredDate: filter.sort === 'asc' ? 1: -1
-        //     //     }
-        //     // }
-        //     const cursor = addFoodCollection.find(query, options);
+        // app.get('/allAvailableFood', async (req, res) => {
+        //     const cursor = addFoodCollection.find();
         //     const result = await cursor.toArray();
         //     res.send(result);
         // })
+        // available food
+        app.get('/allAvailableFood', async(req, res) => {
+            const filter = req.query;
+            console.log(filter)
+            const query = {
+                foodName: {$regex: filter.search, $options: 'i'}
+            };
+            const options = {
+                sort: {
+                    expiredDate: filter.sort === 'asc' ? 1 : -1
+                }
+            }
+            const cursor = addFoodCollection.find(query, options);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
     
         app.post('/featuredFood', async(req, res) => {
             const featuredItem = req.body;
