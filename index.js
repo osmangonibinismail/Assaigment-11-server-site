@@ -58,7 +58,7 @@ async function run() {
     try {
         // collection set up
         const addFoodCollection = client.db('oaiFoodCorner').collection('food')
-        const reqestCollection = client.db('oaiFoodCorner').collection('request')
+        const requestCollection = client.db('oaiFoodCorner').collection('request')
         // Connect the client to the server	(optional starting in v4.7)
         // await client.connect();
         // jwt generate
@@ -83,12 +83,7 @@ async function run() {
         //         .clearCookie('token', { maxAge: 0, sameSite: 'none', secure: true })
         //         .send({ success: true })
         //  })
-        // All available food 
-        // app.get('/allAvailableFood', async (req, res) => {
-        //     const cursor = addFoodCollection.find();
-        //     const result = await cursor.toArray();
-        //     res.send(result);
-        // })
+        
         // available food
         app.get('/allAvailableFood', async(req, res) => {
             const filter = req.query;
@@ -102,6 +97,12 @@ async function run() {
                 }
             }
             const cursor = addFoodCollection.find(query, options);
+            const result = await cursor.toArray();
+            res.send(result);
+        })
+        // All available food 
+        app.get('/featuredFood', async (req, res) => {
+            const cursor = addFoodCollection.find();
             const result = await cursor.toArray();
             res.send(result);
         })
@@ -129,7 +130,7 @@ async function run() {
         app.post('/requested', async (req, res) => {
             const requestDoc = req.body;
             console.log(requestDoc)
-            const result = await addFoodCollection.insertOne(requestDoc);
+            const result = await requestCollection.insertOne(requestDoc);
             res.send(result)
 
         })
@@ -140,7 +141,7 @@ async function run() {
                 return res.status(403).send({message: 'forbidden access'})
             }
             const query = { email: email }
-            const result = await addFoodCollection.find(query).toArray();
+            const result = await requestCollection.find(query).toArray();
             res.send(result)
         })
         // update available button
